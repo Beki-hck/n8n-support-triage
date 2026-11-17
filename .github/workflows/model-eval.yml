@@ -36,3 +36,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: eval-report, path: results/ }
+      - name: Ollama logs
+        if: always()
+        run: (journalctl -u ollama --no-pager 2>/dev/null || cat ollama.log) | tail -60

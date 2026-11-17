@@ -31,6 +31,8 @@ fs.mkdirSync('results', { recursive: true });
 fs.writeFileSync(`results/report-${mock ? 'mock' : (report.model || 'model').replace(/[:/]/g, '_')}.json`, JSON.stringify(report, null, 2));
 console.log(report.markdown_row);
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${report.markdown_row}\n\n`);
+const errs = report.misses.filter((m) => m.llm_error).slice(0, 3);
+if (errs.length) console.log('first LLM errors:', errs.map((m) => `${m.id}: ${m.llm_error}`).join('\n  '));
 console.log('guardrails:', JSON.stringify(report.guardrails), ' missed urgent:', report.missed_urgent.length);
 
 const fail = (msg) => { console.error('FAIL:', msg); process.exit(1); };
