@@ -1,0 +1,66 @@
+// Fake Ollama server for CI. It knows the right answer for every test message,
+// except three planted faults that the workflow's guardrails must catch:
+//   en03 -> the model replies with chatty text instead of JSON
+//   en10 -> the model invents a category that does not exist
+//   en19 -> the server crashes (HTTP 500)
+// It also serves the test set file, so the eval workflow can download it,
+// and fakes the Telegram Bot API (point the Telegram credential's Base URL here)
+// so CI can check which Telegram messages the intake workflow sends.
+import http from 'node:http';
+import fs from 'node:fs';
+
+const PORT = Number(process.env.MOCK_PORT || 11434);
+const testsetPath = new URL('../tests/testset.jsonl', import.meta.url);
+const raw = fs.readFileSync(testsetPath, 'utf8');
+const byText = new Map(
+  raw.trim().split('\n').map((l) => JSON.parse(l)).map((r) => [r.text, r]),
+);
+export const FAULTS = { en03: 'bad_json', en10: 'bad_category', en19: 'http_500' };
+
+const reply = (res, code, body) => {
+  res.writeHead(code, { 'content-type': 'application/json' });
+  res.end(JSON.stringify(body));
+};
+
+const telegramLog = [];
+
+http.createServer((req, res) => {
+  if (req.method === 'GET' && req.url === '/_telegram') return reply(res, 200, telegramLog);
+  const tg = req.url.match(/^\/bot[^/]+\/(\w+)/);
+  if (tg) {
+    let b = '';
+    req.on('data', (c) => (b += c));
+    return req.on('end', () => {
+      const body = b ? JSON.parse(b) : {};
+      telegramLog.push({ method: tg[1], chat_id: String(body.chat_id ?? ''), text: body.text ?? '' });
+      reply(res, 200, { ok: true, result: { message_id: telegramLog.length, chat: { id: body.chat_id }, text: body.text } });
+    });
+  }
+  if (req.method === 'GET' && req.url === '/testset.jsonl') {
+    res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+    return res.end(raw);
+  }
+  if (req.method !== 'POST' || req.url !== '/api/chat') return reply(res, 404, { error: 'not found' });
+  let body = '';
+  req.on('data', (c) => (body += c));
+  req.on('end', () => {
+    const msgs = JSON.parse(body).messages || [];
+    const text = msgs.at(-1)?.content ?? '';
+    const row = byText.get(text);
+    const fault = row && FAULTS[row.id];
+    if (fault === 'http_500') return reply(res, 500, { error: 'model crashed' });
+    let content;
+    if (fault === 'bad_json') content = 'Sure! This looks like a product question to me.';
+    else {
+      const out = {
+        category: fault === 'bad_category' ? 'shipping' : row?.category ?? 'other',
+        urgency: row?.urgency ?? 'low',
+        confidence: row ? 0.9 : 0.4,
+        summary: 'mock summary',
+        reply_draft: 'mock reply',
+      };
+      content = JSON.stringify(out);
+    }
+    reply(res, 200, { model: 'mock', message: { role: 'assistant', content }, done: true });
+  });
+}).listen(PORT, () => console.log(`mock ollama on :${PORT}`));

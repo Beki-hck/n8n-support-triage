@@ -1,0 +1,22 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  workflow-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Lint workflow JSON
+        run: node ci/lint-workflows.mjs
+      - name: Start fake Ollama + Telegram
+        run: nohup node ci/mock-ollama.mjs > mock.log 2>&1 &
+      - name: Import workflows into real n8n (Docker) and start it
+        run: bash ci/start-n8n.sh
+      - name: Eval contract test (3 planted model faults must be caught)
+        run: node ci/run-eval.mjs --mock
+      - name: Intake routing test
+        run: node ci/test-intake.mjs
+      - name: n8n logs on failure
+        if: failure()
+        run: docker logs n8n-ci | tail -100

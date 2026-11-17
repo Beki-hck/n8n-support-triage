@@ -1,0 +1,34 @@
+name: Model eval (real LLM)
+# Run by hand from the Actions tab: scores a real local model on the 60-message test set.
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Ollama model to test
+        default: qwen2.5:1.5b
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Install Ollama and pull the model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > ollama.log 2>&1 &) && sleep 5
+          ollama pull "${{ inputs.model }}"
+      - name: Serve the test set from this commit
+        run: nohup python3 -m http.server 8000 --directory tests > http.log 2>&1 &
+      - name: Start n8n
+        run: bash ci/start-n8n.sh
+      - name: Run eval
+        env:
+          MODEL: ${{ inputs.model }}
+          OLLAMA_URL: http://localhost:11434
+          TESTSET_URL: http://localhost:8000/testset.jsonl
+        run: node ci/run-eval.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: eval-report, path: results/ }

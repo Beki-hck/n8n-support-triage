@@ -1,0 +1,659 @@
+{
+  "id": "TriageIntake0001",
+  "name": "Triage · Intake",
+  "active": false,
+  "nodes": [
+    {
+      "id": "e7d37aac-39e5-32bb-b417-a34d0f31089c",
+      "name": "Webhook (website form)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "1e3e2c28-8d64-c9b1-b510-2c6d2e7b9cac",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "triage",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "5aca01a9-323b-c97b-3855-245093698ad4",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        420
+      ],
+      "webhookId": "8f18abef-13aa-5f98-5847-15c657e9cf16",
+      "disabled": true,
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "e411bd3b-3a23-bf27-71fa-5c5fc216d9c4",
+      "name": "From web",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Website form / any app: POST {\"text\": \"...\", \"from\": \"Abebe\"}\nconst body = $json.body ?? {};\nconst text = String(body.text ?? '').trim();\nif (!text) throw new Error('Field \"text\" is required');\nreturn { json: { channel: 'web', from: body.from ?? 'web form', chat_id: null, text } };\n"
+      }
+    },
+    {
+      "id": "c357da9c-662d-9a49-c258-db62d6a05ca3",
+      "name": "From Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        420
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const m = $json.message ?? {};\nreturn { json: { channel: 'telegram', from: m.from?.first_name ?? 'telegram user', chat_id: m.chat?.id ?? null, text: m.text ?? '' } };\n"
+      }
+    },
+    {
+      "id": "8325b6fc-e3cb-810f-8e20-b70f9a7cca7e",
+      "name": "Shop settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "959a0777-04c6-b8ab-6b43-f4ed3999a40b",
+              "name": "cfg_owner_chat_id",
+              "value": "REPLACE_WITH_OWNER_TELEGRAM_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "4bfd177b-89b9-3736-b660-773a558f7257",
+              "name": "cfg_sheet_id",
+              "value": "REPLACE_WITH_GOOGLE_SHEET_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "eafd28fe-9d99-3b63-b870-eb08988a8e6f",
+      "name": "Classify message (sub-workflow)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "TriageClassify01",
+          "mode": "id",
+          "cachedResultName": "Triage · Classify message"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "650eb210-b257-42c3-7885-b1657868fde6",
+      "name": "Came from website?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        900,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "58edb560-5200-a779-ed0c-93b3fa833a4a",
+              "leftValue": "={{ $json.channel }}",
+              "rightValue": "web",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "7cf9bd9f-a65d-d697-8ec5-44a27f5fc529",
+      "name": "Reply to website",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        140
+      ],
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {}
+      }
+    },
+    {
+      "id": "8e3e8116-22ef-2fab-f3b2-a2fc4dd6ce64",
+      "name": "Log to Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        900,
+        620
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Shop settings').first().json.cfg_sheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Inbox",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "e9d2880b-c34a-884c-ee2d-ab60e7586aa8",
+      "name": "Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1100,
+        380
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b2229f27-aff5-543d-1d8f-3ea6c17919c9",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "urgent",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "urgent"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e5e2218a-cd65-ece5-bbf0-35e40584df31",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "needs_human",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "needs_human"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4f4ead48-6bb4-92e8-4579-7164663a9513",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "auto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "auto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0df60d74-931e-8e85-24e8-e8db62f1766b",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "spam",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "spam"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "76616d4a-3dec-53f0-0f9b-31ee4242f281",
+      "name": "Owner approves AI reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1340,
+        160
+      ],
+      "parameters": {
+        "operation": "sendAndWait",
+        "chatId": "={{ $('Shop settings').first().json.cfg_owner_chat_id }}",
+        "message": "=🔴 URGENT ({{ $json.category }}) from {{ $json.from }}:\n\"{{ $json.text }}\"\n\nAI draft reply:\n\"{{ $json.reply_draft }}\"\n\nSend this reply to the customer?",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "approveLabel": "✅ Send reply",
+            "disapproveLabel": "❌ I'll handle it"
+          }
+        },
+        "options": {
+          "appendAttribution": false,
+          "limitWaitTime": {
+            "values": {
+              "limitType": "afterTimeInterval",
+              "resumeAmount": 2,
+              "resumeUnit": "hours"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "8f4bfc03-9f7e-1021-3ae8-18ab435dab67",
+      "name": "Approved + Telegram customer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1580,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4dd9e7c6-06cc-d77a-d175-930869bcb6d4",
+              "leftValue": "={{ $json.data?.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "8543e59c-39d5-1f72-1b54-33cdefd9d9f2",
+              "leftValue": "={{ $('Route').item.json.chat_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "e03c1f27-9ab9-c549-9374-3a65c8d134e1",
+      "name": "Send approved reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1800,
+        140
+      ],
+      "parameters": {
+        "chatId": "={{ $('Route').item.json.chat_id }}",
+        "text": "={{ $('Route').item.json.reply_draft }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "f50c887b-88d8-9beb-0cad-6b57cdea7a07",
+      "name": "Alert owner: needs a human",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1340,
+        360
+      ],
+      "parameters": {
+        "chatId": "={{ $('Shop settings').first().json.cfg_owner_chat_id }}",
+        "text": "=🟡 Needs you ({{ $json.problem || $json.category }}) from {{ $json.from }} via {{ $json.channel }}:\n\"{{ $json.text }}\"\n\nSummary: {{ $json.summary }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "62ba869d-8bef-143c-a70a-db645bacd4a2",
+      "name": "Telegram customer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1340,
+        540
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fb9236d6-0782-1698-b908-00f0c7cbe661",
+              "leftValue": "={{ $json.chat_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a3b1de42-1a03-96bb-e41e-519f9e851541",
+      "name": "Send instant acknowledgement",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1580,
+        520
+      ],
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.lang === 'am' ? 'ሰላም! መልእክትዎ ደርሶናል። በቅርቡ እንመልስልዎታለን። 🙏' : 'Hi! We got your message and will reply soon. 🙏' }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "def1129a-a0bc-18fa-7059-0b7baec7acf7",
+      "name": "Spam: stop here",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        720
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "ddc0f246-6cd8-7bf9-ae50-6b0c040a6281",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -260
+      ],
+      "parameters": {
+        "content": "## Intake\nWebsite form (webhook) or Telegram → classify → (reply to website) + log to Google Sheet + route.\n\n- **urgent**: owner gets the AI draft in Telegram and taps ✅ before anything is sent.\n- **needs_human**: owner is pinged (model unsure, broken answer, or LLM down).\n- **auto**: customer gets a fixed thank-you, never free AI text.\n- **spam**: logged only.\n\nSet your chat ID and sheet ID in **Shop settings**.",
+        "width": 700,
+        "height": 300
+      }
+    }
+  ],
+  "connections": {
+    "Webhook (website form)": {
+      "main": [
+        [
+          {
+            "node": "From web",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "From Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "From web": {
+      "main": [
+        [
+          {
+            "node": "Shop settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "From Telegram": {
+      "main": [
+        [
+          {
+            "node": "Shop settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shop settings": {
+      "main": [
+        [
+          {
+            "node": "Classify message (sub-workflow)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify message (sub-workflow)": {
+      "main": [
+        [
+          {
+            "node": "Came from website?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Came from website?": {
+      "main": [
+        [
+          {
+            "node": "Reply to website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Owner approves AI reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert owner: needs a human",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram customer?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Spam: stop here",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Owner approves AI reply": {
+      "main": [
+        [
+          {
+            "node": "Approved + Telegram customer?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved + Telegram customer?": {
+      "main": [
+        [
+          {
+            "node": "Send approved reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram customer?": {
+      "main": [
+        [
+          {
+            "node": "Send instant acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "TriageErrors0001"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

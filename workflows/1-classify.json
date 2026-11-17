@@ -1,0 +1,176 @@
+{
+  "id": "TriageClassify01",
+  "name": "Triage · Classify message",
+  "active": false,
+  "nodes": [
+    {
+      "id": "596c1795-b454-5e8a-e5a6-182ef521a4b5",
+      "name": "When called by another workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "d00de538-a1b6-464e-dd3b-19893ea0d32f",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ca177fec-8f3f-4649-c8b2-6f18a55c831b",
+              "name": "ollama_url",
+              "value": "={{ $json.ollama_url || 'http://localhost:11434' }}",
+              "type": "string"
+            },
+            {
+              "id": "102ab330-4bfe-dea7-a5ca-54665bc4e8fd",
+              "name": "model",
+              "value": "={{ $json.model || 'gemma3:4b' }}",
+              "type": "string"
+            },
+            {
+              "id": "b6db2816-a961-0093-4140-bab2642b33cd",
+              "name": "min_confidence",
+              "value": "={{ $json.min_confidence ?? 0.6 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "8b1290e4-d9c6-915b-2692-a51669769e6f",
+      "name": "Build prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Builds the request for the local LLM. One item = one customer message.\nconst CATEGORIES = {\n  order_status: 'where is my order, delivery date, change address, cancel an order',\n  payment: 'paid but not confirmed, charged twice, payment methods, payment page errors',\n  product_question: 'availability, size, price, specs, warranty, wholesale',\n  complaint: 'damaged, broken, wrong item, faulty product, rude staff',\n  spam: 'scams, prize links, ads, phishing, follower selling',\n  other: 'opening hours, shop location, thanks, jobs, anything else',\n};\nconst text = String($json.text ?? '').trim();\n// Amharic letters live in the Ethiopic Unicode block (U+1200-U+137F).\nconst lang = /[\\u1200-\\u137F]/.test(text) ? 'am' : 'en';\n\nconst system = [\n  'You triage customer messages for a small online shop in Ethiopia.',\n  'Messages may be English, Amharic (Ethiopic script), or Amharic typed in Latin letters.',\n  'Pick exactly one category:',\n  ...Object.entries(CATEGORIES).map(([k, v]) => '- ' + k + ': ' + v),\n  'Urgency: high = money lost, damaged/wrong item, angry or repeat message, or a deadline today;',\n  'normal = needs action soon (order changes, payment checks); low = simple questions, thanks, spam.',\n  'confidence = how sure you are, 0 to 1.',\n  'summary = one short English sentence.',\n  'reply_draft = a short polite reply in the SAME language and script as the customer.',\n  'Never promise refunds, prices or delivery dates in reply_draft.',\n  'Answer with JSON only.',\n].join('\\n');\n\n// Ollama \"structured outputs\": the model must fill this JSON schema.\nconst schema = {\n  type: 'object',\n  properties: {\n    category: { type: 'string', enum: Object.keys(CATEGORIES) },\n    urgency: { type: 'string', enum: ['high', 'normal', 'low'] },\n    confidence: { type: 'number' },\n    summary: { type: 'string' },\n    reply_draft: { type: 'string' },\n  },\n  required: ['category', 'urgency', 'confidence', 'summary', 'reply_draft'],\n};\n\nreturn {\n  json: {\n    ...$json,\n    text,\n    lang,\n    llm_request: {\n      model: $json.model,\n      stream: false,\n      format: schema,\n      options: { temperature: 0 },\n      messages: [\n        { role: 'system', content: system },\n        { role: 'user', content: text },\n      ],\n    },\n  },\n};\n"
+      }
+    },
+    {
+      "id": "635f92c4-6a68-d5a6-9ce1-ffcdeda59647",
+      "name": "Ask local LLM (Ollama)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.ollama_url }}/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.llm_request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "520343dc-933f-14f4-d081-477e989b48a7",
+      "name": "Validate answer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Guardrail: never trust the model's answer blindly.\n// Anything broken or unsure goes to a human instead of to the customer.\nconst ALLOWED = ['order_status', 'payment', 'product_question', 'complaint', 'spam', 'other'];\nconst URGENCY = ['high', 'normal', 'low'];\n\nconst input = $('Build prompt').item.json;           // the original message\nconst { llm_request, ollama_url, min_confidence, ...record } = input;\n// Fields named cfg_* are settings from the calling workflow, not message data.\nfor (const k of Object.keys(record)) if (k.startsWith('cfg_')) delete record[k];\n\nlet problem = null;\nlet out = {};\nif ($json.error) {\n  problem = 'llm_unreachable';                         // HTTP error after retries\n} else {\n  try { out = JSON.parse($json.message?.content ?? ''); }\n  catch { problem = 'invalid_json'; }\n  if (!problem && !ALLOWED.includes(out.category)) problem = 'unknown_category';\n  if (!problem && !URGENCY.includes(out.urgency)) problem = 'unknown_urgency';\n}\n\nconst confidence = Number(out.confidence);\nconst lowConfidence = !problem && !(confidence >= min_confidence);\n\nlet route;\nif (problem || lowConfidence) route = 'needs_human';\nelse if (out.category === 'spam') route = 'spam';\nelse if (out.urgency === 'high') route = 'urgent';\nelse route = 'auto';\n\nreturn {\n  json: {\n    ...record,\n    category: problem ? 'needs_human' : out.category,\n    urgency: problem ? 'high' : out.urgency,\n    confidence: Number.isFinite(confidence) ? confidence : null,\n    summary: out.summary ?? '',\n    reply_draft: problem ? '' : (out.reply_draft ?? ''),\n    route,\n    problem: problem ?? (lowConfidence ? 'low_confidence' : null),\n    triaged_at: new Date().toISOString(),\n  },\n};\n"
+      }
+    },
+    {
+      "id": "40c5a3f7-245d-774c-f32d-a18ff64f5709",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        0
+      ],
+      "parameters": {
+        "content": "## Classify message\nOne reusable brain, called by **Intake** (live messages) and **Eval** (test set).\n\n1. **Config**: where Ollama runs and which model. Edit the defaults here.\n2. **Build prompt**: categories, urgency rules, JSON schema.\n3. **Ask local LLM**: retries once, never stops the run.\n4. **Validate answer**: bad JSON, unknown labels, server errors and low confidence all become `needs_human`.",
+        "width": 640,
+        "height": 260
+      }
+    }
+  ],
+  "connections": {
+    "When called by another workflow": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build prompt": {
+      "main": [
+        [
+          {
+            "node": "Ask local LLM (Ollama)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask local LLM (Ollama)": {
+      "main": [
+        [
+          {
+            "node": "Validate answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

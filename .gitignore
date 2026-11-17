@@ -1,0 +1,5 @@
+ci/.build/
+ci/.creds.json
+results/
+node_modules/
+*.log

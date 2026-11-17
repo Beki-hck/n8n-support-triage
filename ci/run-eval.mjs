@@ -1,0 +1,39 @@
+// Calls the Eval workflow's webhook, prints the report, and checks it.
+//   node ci/run-eval.mjs --mock          contract test against ci/mock-ollama.mjs (exact numbers)
+//   node ci/run-eval.mjs --min 80        real model: fail if category accuracy < 80%
+import fs from 'node:fs';
+
+const args = process.argv.slice(2);
+const N8N = process.env.N8N_URL || 'http://localhost:5678';
+const MOCK = process.env.MOCK_URL || 'http://localhost:11434';
+const mock = args.includes('--mock');
+const min = Number(args[args.indexOf('--min') + 1] || 0);
+const model = process.env.MODEL || '';
+
+const q = new URLSearchParams();
+if (mock || process.env.TESTSET_URL) q.set('testset_url', process.env.TESTSET_URL || `${MOCK}/testset.jsonl`);
+if (model) q.set('model', model);
+if (process.env.OLLAMA_URL || mock) q.set('ollama_url', process.env.OLLAMA_URL || MOCK);
+
+const res = await fetch(`${N8N}/webhook/triage-eval?${q}`);
+if (!res.ok) throw new Error(`eval webhook returned ${res.status}: ${await res.text()}`);
+const report = await res.json();
+fs.mkdirSync('results', { recursive: true });
+fs.writeFileSync(`results/report-${mock ? 'mock' : (report.model || 'model').replace(/[:/]/g, '_')}.json`, JSON.stringify(report, null, 2));
+console.log(report.markdown_row);
+if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${report.markdown_row}\n\n`);
+console.log('guardrails:', JSON.stringify(report.guardrails), ' missed urgent:', report.missed_urgent.length);
+
+const fail = (msg) => { console.error('FAIL:', msg); process.exit(1); };
+if (mock) {
+  // The mock answers every message correctly except 3 planted faults.
+  // Each fault must be caught by a different guardrail and sent to a human.
+  const expect = { n: 60, accuracy: 95, guardrails: { invalid_json: 1, unknown_category: 1, llm_unreachable: 1 } };
+  if (report.n !== expect.n) fail(`n=${report.n}, expected ${expect.n}`);
+  if (report.accuracy !== expect.accuracy) fail(`accuracy=${report.accuracy}, expected ${expect.accuracy}`);
+  if (JSON.stringify(report.guardrails) !== JSON.stringify(expect.guardrails)) fail(`guardrails=${JSON.stringify(report.guardrails)}`);
+  const caught = report.misses.every((m) => m.got === 'needs_human');
+  if (!caught) fail('a planted fault slipped past the guardrails');
+  if (report.missed_urgent.length) fail(`urgent messages not escalated: ${report.missed_urgent}`);
+  console.log('PASS: all 3 planted faults were caught and routed to a human');
+} else if (report.accuracy < min) fail(`accuracy ${report.accuracy}% < ${min}%`);

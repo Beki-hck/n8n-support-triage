@@ -1,0 +1,90 @@
+{
+  "id": "TriageErrors0001",
+  "name": "Triage · Error alert",
+  "active": false,
+  "nodes": [
+    {
+      "id": "c3b5bca5-b0bf-47f7-1a68-7050cbc163ea",
+      "name": "When a triage workflow fails",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "14614910-eed8-a24c-6c90-ee76a8b52818",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e8a0070b-a5bb-9724-d163-88fc7ea73b81",
+              "name": "owner_chat_id",
+              "value": "REPLACE_WITH_OWNER_TELEGRAM_CHAT_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "28d8ad9a-28d3-86df-c145-1922a26ce368",
+      "name": "Alert owner on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "chatId": "={{ $json.owner_chat_id }}",
+        "text": "=⚠️ Workflow \"{{ $json.workflow.name }}\" failed at node \"{{ $json.execution.lastNodeExecuted }}\":\n{{ $json.execution.error.message }}\n{{ $json.execution.url }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When a triage workflow fails": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Alert owner on Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

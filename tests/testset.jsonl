@@ -1,0 +1,60 @@
+{"id":"en01","text":"Hi, I ordered 2 pairs of shoes on Monday. When will they arrive in Bole?","category":"order_status","urgency":"normal"}
+{"id":"en02","text":"Where is my order #4471? It has been 6 days and nobody answers the phone.","category":"order_status","urgency":"high"}
+{"id":"en03","text":"Can you tell me if my package left the shop yet? Order 3310.","category":"order_status","urgency":"normal"}
+{"id":"en04","text":"I paid 2,500 birr with Telebirr but the order still says unpaid. Transaction ID 9A7K2LQ.","category":"payment","urgency":"high"}
+{"id":"en05","text":"Money was taken from my CBE account twice for the same order. Please return one payment.","category":"payment","urgency":"high"}
+{"id":"en06","text":"Do you accept CBE Birr or only Telebirr?","category":"payment","urgency":"low"}
+{"id":"en07","text":"I sent the bank transfer this morning, can you confirm you received it?","category":"payment","urgency":"normal"}
+{"id":"en08","text":"Is the black leather jacket available in size L?","category":"product_question","urgency":"low"}
+{"id":"en09","text":"Does this phone charger work with Samsung A14?","category":"product_question","urgency":"low"}
+{"id":"en10","text":"What is the price of the 5 liter cooking oil?","category":"product_question","urgency":"low"}
+{"id":"en11","text":"Are your coffee beans from Yirgacheffe or Sidama? Is it roasted?","category":"product_question","urgency":"low"}
+{"id":"en12","text":"The dress I received is torn at the side. This is very disappointing.","category":"complaint","urgency":"high"}
+{"id":"en13","text":"Your delivery guy was rude to my mother and threw the bag at the gate.","category":"complaint","urgency":"high"}
+{"id":"en14","text":"You sent me the wrong color. I asked for blue and got red.","category":"complaint","urgency":"normal"}
+{"id":"en15","text":"The blender stopped working after two days. I want a replacement.","category":"complaint","urgency":"high"}
+{"id":"en16","text":"CONGRATULATIONS! You won a free iPhone 16. Click bit.ly/fr33-ph0ne to claim now!!!","category":"spam","urgency":"low"}
+{"id":"en17","text":"Earn 50,000 birr per week from home. Join our Telegram channel today.","category":"spam","urgency":"low"}
+{"id":"en18","text":"Buy cheap followers for your shop page, 1000 followers only 300 birr.","category":"spam","urgency":"low"}
+{"id":"en19","text":"What time do you open on Sundays?","category":"other","urgency":"low"}
+{"id":"en20","text":"Do you have a physical shop near Piassa I can visit?","category":"other","urgency":"low"}
+{"id":"en21","text":"Thank you, I got everything and the quality is great!","category":"other","urgency":"low"}
+{"id":"en22","text":"Are you hiring delivery drivers?","category":"other","urgency":"low"}
+{"id":"en23","text":"My order 5120 was supposed to come yesterday for my daughter's birthday today. Where is it??","category":"order_status","urgency":"high"}
+{"id":"en24","text":"The payment page shows an error when I try to pay with Telebirr.","category":"payment","urgency":"normal"}
+{"id":"en25","text":"I want to cancel my order before it ships, I found it cheaper elsewhere.","category":"order_status","urgency":"normal"}
+{"id":"en26","text":"Is there a warranty on the TV?","category":"product_question","urgency":"low"}
+{"id":"en27","text":"Second time I'm writing. The perfume bottle arrived broken and leaking.","category":"complaint","urgency":"high"}
+{"id":"en28","text":"Dear customer your account is suspended, verify at telebirr-secure-login.xyz","category":"spam","urgency":"low"}
+{"id":"en29","text":"Can I change the delivery address for order 2290 to Megenagna?","category":"order_status","urgency":"normal"}
+{"id":"en30","text":"Do you sell wholesale? I want 50 pieces for my shop.","category":"product_question","urgency":"normal"}
+{"id":"am01","text":"ሰላም፣ ትዕዛዜ መቼ ይደርሳል? ሰኞ ነበር ያዘዝኩት።","category":"order_status","urgency":"normal"}
+{"id":"am02","text":"ትዕዛዝ ቁጥር 4802 እስካሁን አልደረሰም። አንድ ሳምንት ሆነ!","category":"order_status","urgency":"high"}
+{"id":"am03","text":"በቴሌብር 1,800 ብር ከፍያለሁ ግን ትዕዛዙ አልተረጋገጠም።","category":"payment","urgency":"high"}
+{"id":"am04","text":"በንግድ ባንክ መክፈል ይቻላል?","category":"payment","urgency":"low"}
+{"id":"am05","text":"ገንዘቡ ሁለት ጊዜ ተቆርጦብኛል። እባካችሁ አንዱን መልሱልኝ።","category":"payment","urgency":"high"}
+{"id":"am06","text":"ይህ ጫማ በ42 ቁጥር አለ?","category":"product_question","urgency":"low"}
+{"id":"am07","text":"የቡናው ዋጋ ስንት ነው? አንድ ኪሎ።","category":"product_question","urgency":"low"}
+{"id":"am08","text":"ይህ ስልክ ዋስትና አለው?","category":"product_question","urgency":"low"}
+{"id":"am09","text":"የገዛሁት ቀሚስ ተቀዶ ነው የመጣው። በጣም አዝኛለሁ።","category":"complaint","urgency":"high"}
+{"id":"am10","text":"የተላከልኝ ቀለም የተሳሳተ ነው። ሰማያዊ ነበር ያዘዝኩት።","category":"complaint","urgency":"normal"}
+{"id":"am11","text":"አድራሹ በጣም ባለጌ ነበር። ይህ ተቀባይነት የለውም።","category":"complaint","urgency":"high"}
+{"id":"am12","text":"እንኳን ደስ አለዎት! ነፃ ስልክ አሸንፈዋል። አሁኑኑ ይህን ሊንክ ይጫኑ።","category":"spam","urgency":"low"}
+{"id":"am13","text":"ከቤትዎ ሆነው በሳምንት 30,000 ብር ያግኙ። ቻናላችንን ይቀላቀሉ።","category":"spam","urgency":"low"}
+{"id":"am14","text":"እሁድ ስንት ሰዓት ትከፍታላችሁ?","category":"other","urgency":"low"}
+{"id":"am15","text":"በጣም አመሰግናለሁ፣ ዕቃው በሰላም ደርሷል።","category":"other","urgency":"low"}
+{"id":"am16","text":"ሱቃችሁ የት ነው ያለው? መጥቼ ማየት እፈልጋለሁ።","category":"other","urgency":"low"}
+{"id":"am17","text":"የትዕዛዜን አድራሻ ወደ ሜክሲኮ መቀየር እችላለሁ?","category":"order_status","urgency":"normal"}
+{"id":"am18","text":"የገዛሁት ብሌንደር በሁለት ቀን ተበላሸ። መቀየር እፈልጋለሁ።","category":"complaint","urgency":"high"}
+{"id":"am19","text":"በጅምላ ትሸጣላችሁ? ለሱቄ 30 ፍሬ እፈልጋለሁ።","category":"product_question","urgency":"normal"}
+{"id":"am20","text":"የቴሌብር ክፍያ ገጹ ስህተት እያሳየ ነው።","category":"payment","urgency":"normal"}
+{"id":"lt01","text":"Selam, order yene meche yidersal? 3 ken hone.","category":"order_status","urgency":"normal"}
+{"id":"lt02","text":"Telebirr bicha new mikeflut? CBE yichalal?","category":"payment","urgency":"low"}
+{"id":"lt03","text":"Kefeyalehu gin order-u unpaid yilal. Please check, 1200 birr.","category":"payment","urgency":"high"}
+{"id":"lt04","text":"Ye shoe size 40 alachihu?","category":"product_question","urgency":"low"}
+{"id":"lt05","text":"Yetelakew ika teseberoal. Betam yasazinal.","category":"complaint","urgency":"high"}
+{"id":"lt06","text":"Free 1000 birr card! Click here now ena share argu.","category":"spam","urgency":"low"}
+{"id":"lt07","text":"Ameseginalehu, ika dersoal betam konjo new.","category":"other","urgency":"low"}
+{"id":"lt08","text":"Order 3391 yet dersoal? Zare new yemifelgew, urgent!","category":"order_status","urgency":"high"}
+{"id":"lt09","text":"Wagaw sint new ye 5 litre zeyt?","category":"product_question","urgency":"low"}
+{"id":"lt10","text":"Sukachihu Bole yet new? Mache efelgalehu.","category":"other","urgency":"low"}
