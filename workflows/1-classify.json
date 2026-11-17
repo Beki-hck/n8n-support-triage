@@ -82,7 +82,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.llm_request) }}",
         "options": {
-          "timeout": 120000
+          "timeout": 300000
         }
       },
       "retryOnFail": true,
