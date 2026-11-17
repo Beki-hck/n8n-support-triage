@@ -49,7 +49,7 @@
       ],
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Website form / any app: POST {\"text\": \"...\", \"from\": \"Abebe\"}\nconst body = $json.body ?? {};\nconst text = String(body.text ?? '').trim();\nif (!text) throw new Error('Field \"text\" is required');\nreturn { json: { channel: 'web', from: body.from ?? 'web form', chat_id: null, text } };\n"
+        "jsCode": "// Website form / any app: POST {\"text\": \"...\", \"from\": \"Abebe\"}\nconst body = $json.body ?? {};\nreturn { json: { channel: 'web', from: String(body.from ?? 'web form'), chat_id: null, text: String(body.text ?? '').trim() } };\n"
       }
     },
     {
@@ -63,7 +63,125 @@
       ],
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const m = $json.message ?? {};\n// Photos, stickers and voice notes have no text. Send them to a human.\nconst text = String(m.text ?? m.caption ?? '').trim() || '(no text: photo, sticker or voice message)';\nreturn { json: { channel: 'telegram', from: m.from?.first_name ?? 'telegram user', chat_id: m.chat?.id ?? null, text } };\n"
+        "jsCode": "// Telegram update -> the same shape as the website form.\nconst m = $json.message ?? {};\nreturn {\n  json: {\n    channel: 'telegram',\n    from: m.from?.first_name ?? 'Telegram user',\n    chat_id: m.chat?.id ?? null,\n    text: String(m.text ?? m.caption ?? '').trim(),   // photos/voice notes have no text\n  },\n};\n"
+      }
+    },
+    {
+      "id": "ed9dc61d-e8ad-86be-900b-74d7dc844f56",
+      "name": "Has text?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0406b6f7-0d06-5ca3-9c2e-70df8efebc2e",
+              "leftValue": "={{ $json.text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "82b6fc76-f731-2504-18c5-f686fb67f09c",
+      "name": "Empty, from website?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        760
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "58edb560-5200-a779-ed0c-93b3fa833a4a",
+              "leftValue": "={{ $json.channel }}",
+              "rightValue": "web",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "084baf0b-047e-b5f1-4685-08543999e7e6",
+      "name": "Reply: text is required",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        740
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"error\": \"text is required\" }",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    },
+    {
+      "id": "58ba5264-bfe5-e93f-a3cc-e318e07beb02",
+      "name": "Alert owner: photo or voice",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        920
+      ],
+      "parameters": {
+        "chatId": "={{ $('Shop settings').first().json.cfg_owner_chat_id }}",
+        "text": "=🟡 Needs you: {{ String($json.from).replace(/[_*`\\[]/g, ' ') }} sent a photo, sticker or voice message on Telegram with no text. The bot can't read it, so it asked them to describe it in words.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "556ecaaf-cd6b-6152-e26d-6c9ff35e70cc",
+      "name": "Ask customer to describe it",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        920
+      ],
+      "parameters": {
+        "chatId": "={{ $('Empty, from website?').item.json.chat_id }}",
+        "text": "=Thanks, we got it! 🙏 Please also describe it in a short text so we can help faster.\nእናመሰግናለን! 🙏 በፍጥነት እንድንረዳዎ እባክዎ በአጭር ጽሑፍ ይግለጹልን።",
+        "additionalFields": {
+          "appendAttribution": false
+        }
       }
     },
     {
@@ -102,7 +220,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        660,
+        880,
         300
       ],
       "parameters": {
@@ -121,8 +239,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        900,
-        160
+        1120,
+        80
       ],
       "parameters": {
         "conditions": {
@@ -154,8 +272,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1120,
-        140
+        1340,
+        60
       ],
       "parameters": {
         "respondWith": "json",
@@ -164,13 +282,27 @@
       }
     },
     {
+      "id": "36f67e24-af07-d00e-45e7-b2e165e8dfe8",
+      "name": "Write Telegram texts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        460
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Telegram reads these messages as Markdown, so a _ * ` or [ in a customer's\n// message would make Telegram reject it. Escape them, and write every\n// Telegram text in one place.\nconst esc = (s) => String(s ?? '').replace(/([_*`\\[])/g, '\\\\$1');\nconst j = $json;\nlet ownerText;\nif (j.route === 'urgent' && j.channel === 'telegram')\n  ownerText = '🔴 URGENT (' + esc(j.category) + ') from ' + esc(j.from) + ':\\n\"' + esc(j.text) + '\"\\n\\nAI draft reply:\\n\"' + esc(j.reply_draft) + '\"\\n\\nSend this reply to the customer?';\nelse if (j.route === 'urgent')   // website: the bot has no way to answer, so the owner replies\n  ownerText = '🔴 URGENT (' + esc(j.category) + ') from ' + esc(j.from) + ' via the website:\\n\"' + esc(j.text) + '\"\\n\\nSummary: ' + esc(j.summary) + '\\nThe bot can\\'t reply on the website. Please contact this customer yourself.';\nelse ownerText = '🟡 Needs you (' + esc(j.problem || j.category) + ') from ' + esc(j.from) + ' via ' + j.channel + ':\\n\"' + esc(j.text) + '\"\\n\\nSummary: ' + esc(j.summary);\nconst ack = j.lang === 'am'\n  ? 'ሰላም! መልእክትዎ ደርሶናል። በቅርቡ እንመልስልዎታለን። 🙏'\n  : 'Hi! We got your message and will reply soon. 🙏';\nreturn { json: { ...j, tg_owner_text: ownerText, tg_customer_reply: esc(j.reply_draft), tg_ack: ack } };\n"
+      }
+    },
+    {
       "id": "8e3e8116-22ef-2fab-f3b2-a2fc4dd6ce64",
       "name": "Log to Google Sheet",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        900,
-        620
+        1120,
+        260
       ],
       "parameters": {
         "operation": "append",
@@ -200,8 +332,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        1100,
-        380
+        1340,
+        460
       ],
       "parameters": {
         "rules": {
@@ -313,13 +445,13 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1580,
-        120
+        1820,
+        200
       ],
       "parameters": {
         "operation": "sendAndWait",
         "chatId": "={{ $('Shop settings').first().json.cfg_owner_chat_id }}",
-        "message": "=🔴 URGENT ({{ $json.category }}) from {{ $json.from }}:\n\"{{ $json.text }}\"\n\nAI draft reply:\n\"{{ $json.reply_draft }}\"\n\nSend this reply to the customer?",
+        "message": "={{ $json.tg_owner_text }}",
         "approvalOptions": {
           "values": {
             "approvalType": "double",
@@ -340,13 +472,63 @@
       }
     },
     {
-      "id": "8f4bfc03-9f7e-1021-3ae8-18ab435dab67",
-      "name": "Approved + Telegram customer?",
+      "id": "e570f884-0ddd-6dd3-5705-288c436fdd47",
+      "name": "Urgent from Telegram?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
+        1580,
+        260
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1b9b0a20-07ed-35c1-a598-4e77f416971e",
+              "leftValue": "={{ $json.channel }}",
+              "rightValue": "telegram",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "3a8d4ec9-9a19-856f-72f2-c5b87ffef2cb",
+      "name": "Alert owner: urgent web message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
         1820,
-        120
+        360
+      ],
+      "parameters": {
+        "chatId": "={{ $('Shop settings').first().json.cfg_owner_chat_id }}",
+        "text": "={{ $json.tg_owner_text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "74e1f58d-5b30-4110-94fd-e8fb5ae46441",
+      "name": "Owner approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2060,
+        200
       ],
       "parameters": {
         "conditions": {
@@ -366,16 +548,6 @@
                 "operation": "true",
                 "singleValue": true
               }
-            },
-            {
-              "id": "8543e59c-39d5-1f72-1b54-33cdefd9d9f2",
-              "leftValue": "={{ $('Route').item.json.chat_id }}",
-              "rightValue": "",
-              "operator": {
-                "type": "number",
-                "operation": "exists",
-                "singleValue": true
-              }
             }
           ],
           "combinator": "and"
@@ -389,12 +561,12 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        2040,
-        100
+        2300,
+        180
       ],
       "parameters": {
-        "chatId": "={{ $('Route').item.json.chat_id }}",
-        "text": "={{ $('Route').item.json.reply_draft }}",
+        "chatId": "={{ $('Write Telegram texts').item.json.chat_id }}",
+        "text": "={{ $('Write Telegram texts').item.json.tg_customer_reply }}",
         "additionalFields": {
           "appendAttribution": false
         }
@@ -406,12 +578,12 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1340,
-        360
+        1580,
+        460
       ],
       "parameters": {
         "chatId": "={{ $('Shop settings').first().json.cfg_owner_chat_id }}",
-        "text": "=🟡 Needs you ({{ $json.problem || $json.category }}) from {{ $json.from }} via {{ $json.channel }}:\n\"{{ $json.text }}\"\n\nSummary: {{ $json.summary }}",
+        "text": "={{ $json.tg_owner_text }}",
         "additionalFields": {
           "appendAttribution": false
         }
@@ -423,8 +595,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1340,
-        540
+        1580,
+        640
       ],
       "parameters": {
         "conditions": {
@@ -457,12 +629,12 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1580,
-        520
+        1820,
+        620
       ],
       "parameters": {
         "chatId": "={{ $json.chat_id }}",
-        "text": "={{ $json.lang === 'am' ? 'ሰላም! መልእክትዎ ደርሶናል። በቅርቡ እንመልስልዎታለን። 🙏' : 'Hi! We got your message and will reply soon. 🙏' }}",
+        "text": "={{ $json.tg_ack }}",
         "additionalFields": {
           "appendAttribution": false
         }
@@ -474,8 +646,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1340,
-        720
+        1580,
+        820
       ],
       "parameters": {}
     },
@@ -486,63 +658,13 @@
       "typeVersion": 1,
       "position": [
         0,
-        -260
+        -140
       ],
       "parameters": {
-        "content": "## Intake\nWebsite form (webhook) or Telegram → classify → (reply to website) + log to Google Sheet + route.\n\n- **urgent**: owner gets the AI draft in Telegram and taps ✅ before anything is sent (website messages: owner is alerted to reply).\n- **needs_human**: owner is pinged (model unsure, broken answer, or LLM down).\n- **auto**: customer gets a fixed thank-you, never free AI text.\n- **spam**: logged only.\n\nSet your chat ID and sheet ID in **Shop settings**. Turn on **Telegram Trigger** after adding your bot.",
-        "width": 700,
-        "height": 210
+        "content": "## Intake\nWebsite form (webhook) or Telegram bot → classify → reply to website + log to Google Sheet + route.\n\n- **urgent**: Telegram customer → owner gets the AI draft and taps ✅ before it is sent. Website customer → owner is alerted to reply personally.\n- **needs_human**: owner is pinged (model unsure, broken answer, or LLM down).\n- **auto**: customer gets a fixed thank-you, never free AI text.\n- **spam**: logged only.\n\nSetup: fill **Shop settings**, add credentials, and enable **Telegram Trigger** to use the bot.",
+        "width": 640,
+        "height": 250
       }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "caddeed8-1823-4b3f-b705-3a46ccc5800a",
-              "leftValue": "={{ $json.channel }}",
-              "rightValue": "telegram",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "d7f9e44f-706d-4856-bfae-78ba3b235434",
-      "name": "Urgent from Telegram?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        1340,
-        160
-      ]
-    },
-    {
-      "parameters": {
-        "chatId": "={{ $('Shop settings').first().json.cfg_owner_chat_id }}",
-        "text": "=🔴 URGENT ({{ $json.category }}) from {{ $json.from }} via the website:\n\"{{ $json.text }}\"\n\nSummary: {{ $json.summary }}\nThe bot can't reply on the website. Please contact this customer yourself.",
-        "additionalFields": {
-          "appendAttribution": false
-        }
-      },
-      "id": "bc81e0f4-f216-4feb-92a3-92c7e439d82b",
-      "name": "Alert owner: urgent web message",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        1580,
-        300
-      ]
     }
   ],
   "connections": {
@@ -594,7 +716,54 @@
       "main": [
         [
           {
+            "node": "Has text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has text?": {
+      "main": [
+        [
+          {
             "node": "Classify message (sub-workflow)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Empty, from website?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Empty, from website?": {
+      "main": [
+        [
+          {
+            "node": "Reply: text is required",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert owner: photo or voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert owner: photo or voice": {
+      "main": [
+        [
+          {
+            "node": "Ask customer to describe it",
             "type": "main",
             "index": 0
           }
@@ -610,7 +779,7 @@
             "index": 0
           },
           {
-            "node": "Route",
+            "node": "Write Telegram texts",
             "type": "main",
             "index": 0
           },
@@ -627,6 +796,17 @@
         [
           {
             "node": "Reply to website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Telegram texts": {
+      "main": [
+        [
+          {
+            "node": "Route",
             "type": "main",
             "index": 0
           }
@@ -665,18 +845,36 @@
         ]
       ]
     },
-    "Owner approves AI reply": {
+    "Urgent from Telegram?": {
       "main": [
         [
           {
-            "node": "Approved + Telegram customer?",
+            "node": "Owner approves AI reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert owner: urgent web message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Approved + Telegram customer?": {
+    "Owner approves AI reply": {
+      "main": [
+        [
+          {
+            "node": "Owner approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Owner approved?": {
       "main": [
         [
           {
@@ -692,24 +890,6 @@
         [
           {
             "node": "Send instant acknowledgement",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Urgent from Telegram?": {
-      "main": [
-        [
-          {
-            "node": "Owner approves AI reply",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Alert owner: urgent web message",
             "type": "main",
             "index": 0
           }

@@ -5,10 +5,10 @@ import fs from 'node:fs';
 import http from 'node:http';
 
 const args = process.argv.slice(2);
-const N8N = process.env.N8N_URL || 'http://localhost:5678';
-const MOCK = process.env.MOCK_URL || 'http://localhost:11434';
+const N8N = process.env.N8N_URL || 'http://127.0.0.1:5678';
+const MOCK = process.env.MOCK_URL || 'http://127.0.0.1:11434';
 const mock = args.includes('--mock');
-const min = Number(args[args.indexOf('--min') + 1] || 0);
+const min = args.includes('--min') ? Number(args[args.indexOf('--min') + 1]) : 0;
 const model = process.env.MODEL || '';
 
 const q = new URLSearchParams();

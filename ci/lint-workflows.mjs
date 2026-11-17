@@ -2,12 +2,12 @@
 import fs from 'node:fs';
 const dir = 'workflows';
 const errors = [];
-const ids = new Set();
-for (const f of fs.readdirSync(dir).filter((f) => f.endsWith('.json'))) {
-  const wf = JSON.parse(fs.readFileSync(`${dir}/${f}`, 'utf8'));
+const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
+const all = Object.fromEntries(files.map((f) => [f, JSON.parse(fs.readFileSync(`${dir}/${f}`, 'utf8'))]));
+const ids = new Set(Object.values(all).map((wf) => wf.id));
+for (const [f, wf] of Object.entries(all)) {
   const raw = JSON.stringify(wf);
   const names = new Set(wf.nodes.map((n) => n.name));
-  ids.add(wf.id);
   if (wf.nodes.some((n) => n.credentials)) errors.push(`${f}: ships with credentials attached`);
   if (/\d{8,10}:[A-Za-z0-9_-]{30,}/.test(raw)) errors.push(`${f}: looks like a Telegram bot token`);
   if (/(sk-|AIza)[A-Za-z0-9_-]{20,}/.test(raw)) errors.push(`${f}: looks like an API key`);
@@ -23,10 +23,9 @@ for (const f of fs.readdirSync(dir).filter((f) => f.endsWith('.json'))) {
   for (const n of wf.nodes)
     if (n.type !== 'n8n-nodes-base.stickyNote' && !linked.has(n.name)) errors.push(`${f}: node "${n.name}" is not connected`);
   for (const n of wf.nodes.filter((n) => n.type === 'n8n-nodes-base.executeWorkflow'))
-    if (!ids.has(n.parameters.workflowId.value) && !fs.readdirSync(dir).some((g) => fs.readFileSync(`${dir}/${g}`, 'utf8').includes(`"id": "${n.parameters.workflowId.value}"`)))
-      errors.push(`${f}: calls unknown sub-workflow ${n.parameters.workflowId.value}`);
-  if (wf.nodes.some((n) => n.type === 'n8n-nodes-base.webhook') && f.includes('intake') && !wf.settings.errorWorkflow)
-    errors.push(`${f}: live workflow has no error workflow`);
+    if (!ids.has(n.parameters.workflowId.value)) errors.push(`${f}: calls unknown sub-workflow ${n.parameters.workflowId.value}`);
+  const isErrorWf = wf.nodes.some((n) => n.type === 'n8n-nodes-base.errorTrigger');
+  if (!isErrorWf && !ids.has(wf.settings.errorWorkflow)) errors.push(`${f}: no error workflow set`);
 }
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 console.log(`lint ok: ${ids.size} workflows`);

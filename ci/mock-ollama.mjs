@@ -23,16 +23,33 @@ const reply = (res, code, body) => {
 };
 
 const telegramLog = [];
+let telegramWebhook = null; // what n8n's Telegram Trigger registered with setWebhook
+
+// Real Telegram rejects a message whose Markdown is broken ("can't parse entities").
+// Same check here, so CI catches unescaped _ * ` [ in the texts the workflow builds.
+function markdownProblem(text) {
+  const t = String(text).replace(/\\[_*`\[]/g, '').replace(/\[[^\]]*\]\([^)]*\)/g, '');
+  for (const ch of ['_', '*', '`']) if (t.split(ch).length % 2 === 0) return `unbalanced ${ch}`;
+  if (t.includes('[')) return 'unescaped [';
+  return null;
+}
 
 http.createServer((req, res) => {
-  if (req.method === 'GET' && req.url === '/_telegram') return reply(res, 200, telegramLog);
+  if (req.method === 'GET' && req.url === '/_telegram') return reply(res, 200, { messages: telegramLog, webhook: telegramWebhook });
   const tg = req.url.match(/^\/bot[^/]+\/(\w+)/);
   if (tg) {
     let b = '';
     req.on('data', (c) => (b += c));
     return req.on('end', () => {
       const body = b ? JSON.parse(b) : {};
-      telegramLog.push({ method: tg[1], chat_id: String(body.chat_id ?? ''), text: body.text ?? '' });
+      const method = tg[1];
+      if (method === 'setWebhook') { telegramWebhook = body; return reply(res, 200, { ok: true, result: true }); }
+      if (method === 'getWebhookInfo') return reply(res, 200, { ok: true, result: { url: telegramWebhook?.url ?? '' } });
+      if (method === 'deleteWebhook') { telegramWebhook = null; return reply(res, 200, { ok: true, result: true }); }
+      if (method !== 'sendMessage') return reply(res, 200, { ok: true, result: true });
+      const bad = body.parse_mode === 'Markdown' && markdownProblem(body.text);
+      telegramLog.push({ chat_id: String(body.chat_id ?? ''), text: body.text ?? '', parse_mode: body.parse_mode, buttons: body.reply_markup?.inline_keyboard?.[0] ?? null, rejected: bad || undefined });
+      if (bad) return reply(res, 400, { ok: false, error_code: 400, description: `Bad Request: can't parse entities (${bad})` });
       reply(res, 200, { ok: true, result: { message_id: telegramLog.length, chat: { id: body.chat_id }, text: body.text } });
     });
   }
@@ -57,7 +74,7 @@ http.createServer((req, res) => {
         urgency: row?.urgency ?? 'low',
         confidence: row ? 0.9 : 0.4,
         summary: 'mock summary',
-        reply_draft: 'mock reply',
+        reply_draft: 'Sorry about order_4471, we *will* check [today].', // markdown traps on purpose
       };
       content = JSON.stringify(out);
     }

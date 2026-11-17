@@ -31,7 +31,7 @@
             {
               "id": "ca177fec-8f3f-4649-c8b2-6f18a55c831b",
               "name": "ollama_url",
-              "value": "={{ $json.ollama_url || 'http://localhost:11434' }}",
+              "value": "={{ $json.ollama_url || 'http://127.0.0.1:11434' }}",
               "type": "string"
             },
             {
@@ -82,7 +82,13 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.llm_request) }}",
         "options": {
-          "timeout": 120000
+          "timeout": 120000,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          }
         }
       },
       "retryOnFail": true,
@@ -116,7 +122,7 @@
       "parameters": {
         "content": "## Classify message\nOne reusable brain, called by **Intake** (live messages) and **Eval** (test set).\n\n1. **Config**: where Ollama runs and which model. Edit the defaults here.\n2. **Build prompt**: categories, urgency rules, JSON schema.\n3. **Ask local LLM**: retries once, never stops the run.\n4. **Validate answer**: bad JSON, unknown labels, server errors and low confidence all become `needs_human`.",
         "width": 640,
-        "height": 210
+        "height": 230
       }
     }
   ],
@@ -168,7 +174,8 @@
   },
   "pinData": {},
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "errorWorkflow": "TriageErrors0001"
   },
   "meta": {
     "templateCredsSetupCompleted": false

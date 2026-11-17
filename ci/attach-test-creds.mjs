@@ -10,10 +10,13 @@ const CREDS = {
 fs.mkdirSync(out, { recursive: true });
 for (const f of fs.readdirSync(src).filter((f) => f.endsWith('.json'))) {
   const wf = JSON.parse(fs.readFileSync(`${src}/${f}`, 'utf8'));
-  for (const n of wf.nodes) if (CREDS[n.type]) n.credentials = CREDS[n.type];
+  for (const n of wf.nodes) {
+    if (CREDS[n.type]) n.credentials = CREDS[n.type];
+    if (n.type === 'n8n-nodes-base.telegramTrigger') n.disabled = false; // test the bot path too
+  }
   fs.writeFileSync(`${out}/${f}`, JSON.stringify(wf, null, 2));
 }
-const mock = process.env.MOCK_URL || 'http://localhost:11434';
+const mock = process.env.MOCK_URL || 'http://127.0.0.1:11434';
 fs.writeFileSync(`${out}/../.creds.json`, JSON.stringify([
   { id: 'ciTelegram000001', name: 'CI Telegram', type: 'telegramApi', data: { accessToken: '123:ci', baseUrl: mock } },
   { id: 'ciSheets00000001', name: 'CI Sheets', type: 'googleSheetsOAuth2Api', data: { clientId: 'ci', clientSecret: 'ci', oauthTokenData: { access_token: 'ci' } } },

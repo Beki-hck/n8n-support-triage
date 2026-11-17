@@ -14,6 +14,6 @@ for id in TriageClassify01 TriageErrors0001 TriageEval000001 TriageIntake0001; d
   run publish:workflow --id=$id
 done
 docker run -d --name n8n-ci --network host -v n8n_ci:/home/node/.n8n "${ENV[@]}" "$IMG" >/dev/null
-for i in $(seq 1 90); do curl -sf localhost:5678/healthz >/dev/null && break; sleep 2; done
+for i in $(seq 1 90); do curl -sf 127.0.0.1:5678/healthz >/dev/null && break; sleep 2; done
 sleep 5
-curl -sf localhost:5678/healthz && echo
+curl -sf 127.0.0.1:5678/healthz && echo

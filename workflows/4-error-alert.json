@@ -39,20 +39,49 @@
       }
     },
     {
-      "id": "28d8ad9a-28d3-86df-c145-1922a26ce368",
-      "name": "Alert owner on Telegram",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
+      "id": "30ea135e-6f41-d0b9-9a43-fd2c4a3f0c27",
+      "name": "Write alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         440,
         300
       ],
       "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Telegram reads this as Markdown: escape _ * ` [ so odd error text can't break it.\nconst esc = (s) => String(s ?? '').replace(/([_*`\\[])/g, '\\\\$1');\nconst e = $json.execution ?? {};\nconst text = '⚠️ Workflow \"' + esc($json.workflow?.name) + '\" failed at node \"' + esc(e.lastNodeExecuted) + '\":\\n'\n  + esc(e.error?.message ?? 'unknown error') + (e.url ? '\\n' + e.url : '');\nreturn { json: { owner_chat_id: $json.owner_chat_id, text } };\n"
+      }
+    },
+    {
+      "id": "28d8ad9a-28d3-86df-c145-1922a26ce368",
+      "name": "Alert owner on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
         "chatId": "={{ $json.owner_chat_id }}",
-        "text": "=⚠️ Workflow \"{{ $json.workflow.name }}\" failed at node \"{{ $json.execution.lastNodeExecuted }}\":\n{{ $json.execution.error.message }}\n{{ $json.execution.url }}",
+        "text": "={{ $json.text }}",
         "additionalFields": {
           "appendAttribution": false
         }
+      }
+    },
+    {
+      "id": "790f5694-e3ca-fbad-ad5a-433ae39f488a",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        180,
+        0
+      ],
+      "parameters": {
+        "content": "## Error alert\nAny triage workflow that crashes ends up here, and the owner gets a Telegram message with the failing node and a link to the run.\n\nPut your Telegram chat ID in **Settings**.",
+        "width": 520,
+        "height": 170
       }
     }
   ],
@@ -69,6 +98,17 @@
       ]
     },
     "Settings": {
+      "main": [
+        [
+          {
+            "node": "Write alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write alert": {
       "main": [
         [
           {

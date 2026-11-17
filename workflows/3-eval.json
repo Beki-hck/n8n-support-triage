@@ -220,7 +220,8 @@
   },
   "pinData": {},
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "errorWorkflow": "TriageErrors0001"
   },
   "meta": {
     "templateCredsSetupCompleted": false
