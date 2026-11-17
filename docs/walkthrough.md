@@ -17,7 +17,7 @@ Read this with the workflow open in n8n. Each part ends with what to say in an i
 | When called by another workflow | Starts when Intake or Eval calls it | One brain, used by both the live bot and the test. So the test measures exactly what runs in production |
 | Config | Sets Ollama URL, model, minimum confidence (0.6) | Settings in one visible place. Callers can override them (Eval does this to compare models) |
 | Build prompt (Code) | Writes the instructions, detects Amharic letters with a regex (Unicode block U+1200 to U+137F), and adds a **JSON schema** | The schema forces the model to answer in a fixed shape with allowed labels only (Ollama "structured outputs"). Temperature 0 = same answer every time |
-| Ask local LLM (HTTP Request) | POSTs to Ollama `/api/chat`, one message at a time | **Retry** once on failure. **On error: continue**, so a crash becomes data the next node can handle, not a dead workflow. One at a time because a laptop can't run 60 AI requests at once (they would time out) |
+| Ask local LLM (HTTP Request) | POSTs to Ollama `/api/chat` | **Retry** once on failure. **On error: continue**, so a crash becomes data the next node can handle, not a dead workflow |
 | Validate answer (Code) | Checks the answer. Bad JSON, unknown label, server error, or confidence under 0.6 all become `needs_human` | Never trust the model blindly. It also picks the **route**: spam, urgent, auto or needs_human |
 
 **Interview line:** "The LLM can fail in three ways: no answer, wrong format, or made-up labels. Each one has a guardrail, and CI plants one of each to prove the guardrails work."
@@ -57,7 +57,7 @@ Settings → **Error workflow** points to workflow 4, so any crash pings the own
 | Eval settings | Defaults, overridden by the URL |
 | Download test set | Gets `tests/testset.jsonl`: 60 messages (30 English, 20 Amharic, 10 Amharic in Latin letters), each with the right label |
 | Parse test set | One item per message, label renamed to `expected_category` |
-| Classify message | The same brain as production |
+| Classify message | The same brain as production, run **once per message** (mode "each"). The HTTP Request node sends all its items at the same moment, and a local model on a CPU would queue 60 requests until they time out. CI checks that only one AI request is ever open at a time |
 | Score | Accuracy, urgency accuracy, accuracy per language, precision/recall per category, confusion matrix, guardrail counts, and **missed urgent**: urgent messages that would not reach the owner (the most costly mistake) |
 
 **Interview line:** "Accuracy alone hides the dangerous miss. I track urgent messages that slip through separately, and split accuracy by language because small models are much worse in Amharic."
@@ -71,7 +71,7 @@ Error Trigger → Settings → Write alert (escapes Markdown) → Telegram messa
 - `lint-workflows.mjs`: no credentials or tokens in the JSON, every node connected, every sub-workflow exists, every workflow has an error workflow.
 - `mock-ollama.mjs`: fake LLM + fake Telegram API. Like real Telegram, it rejects broken Markdown.
 - `start-n8n.sh`: imports and publishes the workflows in the official n8n Docker image.
-- `run-eval.mjs --mock`: the 3 planted faults must each be caught (exact numbers: 60 items, 95%).
+- `run-eval.mjs --mock`: the 3 planted faults must each be caught (exact numbers: 60 items, 95%), and the AI is never sent two requests at once.
 - `test-intake.mjs`: website and Telegram messages land on the right route; the website never gets AI text; it taps the owner's ✅ button and checks the customer got the reply; empty and photo messages; error alert; exactly 8 Telegram messages, none rejected.
 
 ## Practice questions
@@ -83,3 +83,4 @@ Error Trigger → Settings → Write alert (escapes Markdown) → Telegram messa
 5. How would you compare two models? (Call the eval webhook with `?model=` for each and compare the rows.)
 6. Why a JSON schema AND a validation step? (Small models still break the schema sometimes.)
 7. A customer writes `order_4471`. Why could that break the bot, and how did you fix it? (Telegram Markdown; escape in one Code node; the CI mock rejects bad Markdown.)
+8. Your first real-model run scored 3%. What happened? (All 60 requests went to Ollama at once and timed out. Fix: run the sub-workflow once per message, plus a CI check that fails if requests overlap.)

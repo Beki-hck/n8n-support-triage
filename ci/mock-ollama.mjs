@@ -23,6 +23,10 @@ const reply = (res, code, body) => {
 };
 
 const telegramLog = [];
+// A real CPU model answers one request at a time, so the workflow must not fire
+// them all at once. Track the most requests ever open together.
+let inFlight = 0;
+let maxInFlight = 0;
 let telegramWebhook = null; // what n8n's Telegram Trigger registered with setWebhook
 
 // Real Telegram rejects a message whose Markdown is broken ("can't parse entities").
@@ -35,6 +39,7 @@ function markdownProblem(text) {
 }
 
 http.createServer((req, res) => {
+  if (req.method === 'GET' && req.url === '/_stats') return reply(res, 200, { maxInFlight });
   if (req.method === 'GET' && req.url === '/_telegram') return reply(res, 200, { messages: telegramLog, webhook: telegramWebhook });
   const tg = req.url.match(/^\/bot[^/]+\/(\w+)/);
   if (tg) {
@@ -60,7 +65,11 @@ http.createServer((req, res) => {
   if (req.method !== 'POST' || req.url !== '/api/chat') return reply(res, 404, { error: 'not found' });
   let body = '';
   req.on('data', (c) => (body += c));
-  req.on('end', () => {
+  inFlight++;
+  maxInFlight = Math.max(maxInFlight, inFlight);
+  req.on('end', async () => {
+    await new Promise((r) => setTimeout(r, 50)); // pretend to think, so overlapping calls would show
+    inFlight--;
     const msgs = JSON.parse(body).messages || [];
     const text = msgs.at(-1)?.content ?? '';
     const row = byText.get(text);

@@ -82,13 +82,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.llm_request) }}",
         "options": {
-          "timeout": 120000,
-          "batching": {
-            "batch": {
-              "batchSize": 1,
-              "batchInterval": 0
-            }
-          }
+          "timeout": 120000
         }
       },
       "retryOnFail": true,

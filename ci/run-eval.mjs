@@ -46,5 +46,7 @@ if (mock) {
   const caught = report.misses.every((m) => m.got === 'needs_human');
   if (!caught) fail('a planted fault slipped past the guardrails');
   if (report.missed_urgent.length) fail(`urgent messages not escalated: ${report.missed_urgent}`);
-  console.log('PASS: all 3 planted faults were caught and routed to a human');
+  const { maxInFlight } = await (await fetch(`${MOCK}/_stats`)).json();
+  if (maxInFlight > 1) fail(`${maxInFlight} LLM requests were open at once; a local model needs them one at a time`);
+  console.log('PASS: all 3 planted faults were caught and routed to a human, one LLM request at a time');
 } else if (report.accuracy < min) fail(`accuracy ${report.accuracy}% < ${min}%`);

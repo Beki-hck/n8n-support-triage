@@ -117,6 +117,7 @@
           "mode": "id",
           "cachedResultName": "Triage · Classify message"
         },
+        "mode": "each",
         "options": {}
       }
     },
