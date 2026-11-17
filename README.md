@@ -38,7 +38,16 @@ PASS: website + Telegram routing, owner approval, Markdown safety and error aler
 
 `model-eval.yml` (run by hand from the Actions tab) installs Ollama and scores a real model on the same 60 messages.
 
-REAL_RESULTS_PLACEHOLDER
+**Real model results** (GitHub Actions CPU runner, 2026-11-17, same 60 messages):
+
+| model | category acc | urgency acc | urgent missed | English | Amharic | Amharic (Latin letters) | sent to a human by guardrails |
+|---|---|---|---|---|---|---|---|
+| **gemma3:4b** (default) | **91.7%** | 76.7% | 1 of 17 | 100% | 90% | 70% | 2 |
+| qwen2.5:3b | 56.7% | 46.7% | 7 of 17 | 90% | 10% | 50% | 10 |
+
+gemma3:4b is the default because it also scored best on Amharic in my [amharic-llm-bench](https://github.com/Beki-hck/amharic-llm-bench). Every guardrail catch was the model getting stuck repeating broken Amharic in its draft reply, which is exactly the case a human should see.
+
+The real runs found three bugs that the mock could not: all 60 requests hit Ollama at once and timed out (scores fell to 3%), some answers looped until the 5-minute timeout, and English messages sometimes got Amharic drafts. All three are fixed, and the first one now has a CI check.
 
 ## Run it
 
