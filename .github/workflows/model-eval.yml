@@ -5,7 +5,7 @@ on:
     inputs:
       model:
         description: Ollama model to test
-        default: qwen2.5:1.5b
+        default: gemma3:4b
 jobs:
   eval:
     runs-on: ubuntu-latest

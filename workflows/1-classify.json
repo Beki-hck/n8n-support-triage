@@ -116,7 +116,7 @@
       "parameters": {
         "content": "## Classify message\nOne reusable brain, called by **Intake** (live messages) and **Eval** (test set).\n\n1. **Config**: where Ollama runs and which model. Edit the defaults here.\n2. **Build prompt**: categories, urgency rules, JSON schema.\n3. **Ask local LLM**: retries once, never stops the run.\n4. **Validate answer**: bad JSON, unknown labels, server errors and low confidence all become `needs_human`.",
         "width": 640,
-        "height": 260
+        "height": 210
       }
     }
   ],

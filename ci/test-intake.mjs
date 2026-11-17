@@ -18,6 +18,7 @@ for (const c of cases) {
   if (r.route !== c.route) fail(`"${c.text.slice(0, 30)}" routed to ${r.route}, expected ${c.route}`);
   if (c.lang && r.lang !== c.lang) fail(`language detected as ${r.lang}, expected ${c.lang}`);
   if (Object.keys(r).some((k) => k.startsWith('cfg_'))) fail('settings leaked into the reply');
+  if ('reply_draft' in r || 'summary' in r) fail('AI text leaked to the website');
   console.log(`ok  ${c.route.padEnd(11)} ${c.text.slice(0, 40)}`);
 }
 const bad = await post({});
@@ -27,8 +28,8 @@ console.log('ok  empty message rejected');
 await new Promise((r) => setTimeout(r, 3000));          // let the async branches finish
 const sent = (await (await fetch(`${MOCK}/_telegram`)).json()).slice(before);
 const has = (s) => sent.some((m) => m.text.includes(s));
-if (!has('URGENT')) fail('owner never got the approval request for the urgent message');
+if (!has('URGENT') || !has('contact this customer yourself')) fail('owner never got the urgent alert for the website message');
 if (!has('Needs you')) fail('owner never got the needs-a-human alert');
 if (!has('failed at node')) fail('error workflow did not alert the owner');
 if (sent.length !== 3) fail(`expected 3 Telegram messages, got ${sent.length}: ${JSON.stringify(sent)}`);
-console.log('PASS: routes, owner approval, human alert and error alert all work');
+console.log('PASS: routes, urgent alert, human alert and error alert all work; no AI text reaches the website');

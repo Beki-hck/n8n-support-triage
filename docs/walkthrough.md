@@ -28,12 +28,13 @@ Read this with the workflow open in n8n. Each part ends with what to say in an i
 |---|---|
 | Webhook (website form) | URL a website can POST `{"text": "..."}` to. Answers through "Reply to website" |
 | Telegram Trigger | Same, for a Telegram bot. Turned off until you add a bot token |
-| From web / From Telegram (Code) | Turn both shapes into one: `channel, from, chat_id, text`. Empty text throws an error |
+| From web / From Telegram (Code) | Turn both shapes into one: `channel, from, chat_id, text`. Empty website text throws an error. A Telegram photo or sticker with no text goes to a human |
 | Shop settings | Owner's Telegram chat ID and Google Sheet ID. Named `cfg_...` so Classify strips them and they never leak into replies or the sheet |
 | Classify message | Calls workflow 1 |
-| Came from website? → Reply to website | Sends the result back to the website right away |
+| Came from website? → Reply to website | Sends the website only the route and a fixed thank-you, never the AI draft |
 | Log to Google Sheet | Appends every message. Set to continue on error so a Sheets outage never blocks customers |
 | Route (Switch) | 4 exits: urgent, needs_human, auto, spam |
+| Urgent from Telegram? | Telegram customers can get the approved AI reply. Website customers can't, so the owner gets an alert to reply personally ("Alert owner: urgent web message") |
 | Owner approves AI reply | Telegram **Send and Wait**: the workflow pauses until the owner taps a button (max 2 hours) |
 | Approved + Telegram customer? → Send approved reply | Sends the AI draft only if approved |
 | Alert owner: needs a human | Pings the owner with a summary |
@@ -67,7 +68,7 @@ Error Trigger → Settings → Telegram message with the workflow name, failing 
 - `mock-ollama.mjs`: fake LLM + fake Telegram API.
 - `start-n8n.sh`: imports and publishes the workflows in the official n8n Docker image.
 - `run-eval.mjs --mock`: the 3 planted faults must each be caught (exact numbers: 60 items, 95%).
-- `test-intake.mjs`: 4 messages land on the right route; owner gets exactly 3 Telegram messages (approval, human alert, error alert).
+- `test-intake.mjs`: 4 messages land on the right route; owner gets exactly 3 Telegram messages (urgent alert, human alert, error alert); the website never receives AI text.
 
 ## Practice questions
 

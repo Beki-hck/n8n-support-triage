@@ -2,6 +2,7 @@
 //   node ci/run-eval.mjs --mock          contract test against ci/mock-ollama.mjs (exact numbers)
 //   node ci/run-eval.mjs --min 80        real model: fail if category accuracy < 80%
 import fs from 'node:fs';
+import http from 'node:http';
 
 const args = process.argv.slice(2);
 const N8N = process.env.N8N_URL || 'http://localhost:5678';
@@ -12,12 +13,20 @@ const model = process.env.MODEL || '';
 
 const q = new URLSearchParams();
 if (mock || process.env.TESTSET_URL) q.set('testset_url', process.env.TESTSET_URL || `${MOCK}/testset.jsonl`);
-if (model) q.set('model', model);
+if (model || mock) q.set('model', model || 'mock');
 if (process.env.OLLAMA_URL || mock) q.set('ollama_url', process.env.OLLAMA_URL || MOCK);
 
-const res = await fetch(`${N8N}/webhook/triage-eval?${q}`);
-if (!res.ok) throw new Error(`eval webhook returned ${res.status}: ${await res.text()}`);
-const report = await res.json();
+// node:http instead of fetch: a real model on a CPU can take longer than fetch's 5-minute header timeout.
+const { status, body } = await new Promise((resolve, reject) => {
+  http.get(`${N8N}/webhook/triage-eval?${q}`, (res) => {
+    let b = '';
+    res.setEncoding('utf8');
+    res.on('data', (c) => (b += c));
+    res.on('end', () => resolve({ status: res.statusCode, body: b }));
+  }).on('error', reject);
+});
+if (status !== 200) throw new Error(`eval webhook returned ${status}: ${body}`);
+const report = JSON.parse(body);
 fs.mkdirSync('results', { recursive: true });
 fs.writeFileSync(`results/report-${mock ? 'mock' : (report.model || 'model').replace(/[:/]/g, '_')}.json`, JSON.stringify(report, null, 2));
 console.log(report.markdown_row);

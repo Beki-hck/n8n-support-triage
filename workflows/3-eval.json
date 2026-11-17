@@ -144,9 +144,9 @@
         0
       ],
       "parameters": {
-        "content": "## Eval\nRuns the 60-message labelled test set (English, Amharic, Amharic in Latin letters) through the **same** Classify sub-workflow the live bot uses, then scores it.\n\nClick **Test workflow**, or call `GET /webhook/triage-eval?model=qwen2.5:3b` to compare models.",
+        "content": "## Eval\nRuns the 60-message labelled test set (English, Amharic, Amharic in Latin letters) through the **same** Classify sub-workflow the live bot uses, then scores it.\n\nClick **Execute workflow**, or call `GET /webhook/triage-eval?model=gemma3:4b` to compare models.",
         "width": 620,
-        "height": 220
+        "height": 170
       }
     }
   ],
